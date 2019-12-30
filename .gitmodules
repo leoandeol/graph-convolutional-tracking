@@ -1,0 +1,3 @@
+[submodule "vot-toolkit"]
+	path = vot-toolkit
+	url = git@github.com:votchallenge/vot-toolkit.git
