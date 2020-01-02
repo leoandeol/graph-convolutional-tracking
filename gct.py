@@ -9,16 +9,24 @@ from torchvision.models import alexnet
 class GCT(nn.Module):
 
     def __init__(self):
+        #### Constants
+        # Number of parts : D1 x 1 x 1 => ???
+        self.M_z = ...
+        #Feature dimensionality of embeddings
         self.D_1 = 256
         self.D_2 = ...
         #Spatial_temporal graph ???
     
-        # Shared convnet "phi"
-        self.share_convnet = alexnet(pretrained=True)
-        #todo bloquer les deux premieres couches et fine tune les derux dernieres, et ajouter 3x3 to descendre channel a 256 D_1
+        # Shared convnet "phi" and block 3 first conv layers
+        self.shared_convnet = alexnet(pretrained=True).features
+        for param in self.shared_convnet[:8]:
+            param.requires_grad=False
+        self.shared_convnet.add_module("13",nn.Conv2d(256,self.D_1,3)) 
         
         # Instance Context featuring
-        self.conv_deconv = nn.Sequential(..)
+        self.conv_deconv = nn.Sequential(nn.Conv2d(in_channels, out_channels, kernel_size),
+                                         nn.MaxPool2d(kernel_size),
+                                         nn.ConvTranspose2d(in_channels, out_channels, kernel_size,))
         
         # Part divisoion = ???
         
@@ -62,6 +70,10 @@ class GCT(nn.Module):
         R = ...
         
         return R
+
+
+    def st_gcn(self, graph, embeddings):
+        
         
         
     def graph_learning(self, V_x):
