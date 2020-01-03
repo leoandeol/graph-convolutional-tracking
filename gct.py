@@ -24,6 +24,10 @@ class GCT(nn.Module):
         self.D_2 = 256
         # Time range
         self.T = T
+        
+        #temporary measure until automatically resized input pics
+        self.M_x = 88
+        self.M_z = 88
     
         # Shared convnet "phi" and block 3 first conv layers
         self.shared_convnet = alexnet(pretrained=True).features
@@ -63,23 +67,20 @@ class GCT(nn.Module):
         print("X",X.shape,"Z",Z.shape)
         # Context feature of search image
 
-        #temporary measure until automatically resized input pics
-        self.M_x = 88
-        self.M_z = 88
         
         #tmp = nn.Conv1d(self.D_1, self.D_2, 3, padding=1)(X)
         #tmp = nn.MaxPool1d(self.M_x)(tmp)
         #X_hat = nn.ConvTranspose1d(self.D_1, self.D_2, self.M_z)(tmp)
                            
-        #X_hat = self.conv_deconv(X)
+        X_hat = self.conv_deconv(X)
         print("X^",X_hat.shape)
         # ST-GCN
         A_1 = self.build_st_graph(self.T, self.M_z)
-        V_1 = self.st_gcn(Z, A_1)
+        V_1 = self.st_gcn(Z.permute(0,2,1), A_1).permute(0,2,1)
                                      #time range T max pooling ?)
         print("A_1",A_1.shape,"V_1",V_1.shape)
         # Graph Learning 
-        V_x = V + X_hat
+        V_x = V_1 + X_hat
         A_2 = self.build_ct_graph(V_x)
         print("V_x",V_x.shape,"A_2",A_2.shape)
         
@@ -112,10 +113,10 @@ class GCT(nn.Module):
         d = V_x.shape[-1]
         A = torch.zeros((d,d))#, layout=torch.sparse_coo)
         print(V_x.shape)
-        print(g(V_x[:,i].shape))
+        print(self.g(V_x[:,0]).shape)
         for i in range(self.M_z):
             for j in range(self.M_z):
-                A[j,i]=torch.exp(torch.mm(g(V_x[:,i]).T,h(V_x[:,j])))
+                A[j,i]=torch.exp(torch.mm(self.g(V_x[:,i]).T,self.h(V_x[:,j])))
         #normalize
         A = A / A.sum(1)[:,None]
         return A
