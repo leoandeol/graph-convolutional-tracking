@@ -29,10 +29,10 @@ class GraphConvolution(nn.Module):
 
     def forward(self, input, adj):
         #check if correct reshape
-        print("X@W",input.shape,self.weight.shape)
+        #print("X@W",input.shape,self.weight.shape)
         support = torch.matmul(input, self.weight)
         dims = support.shape[:2]
-        print("L@Res",adj.shape,support.shape)
+        #print("L@Res",adj.shape,support.shape)
         output = torch.matmul(adj, support.reshape(-1,self.weight.shape[-1]))
         if self.bias is not None:
             return output + self.bias

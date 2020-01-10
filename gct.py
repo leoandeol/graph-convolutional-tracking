@@ -9,6 +9,8 @@ from torchvision.models import alexnet
 from layers import GraphConvolution
 from functions import regularized_laplacian
 
+from math import sqrt
+
 
 class GCT(nn.Module):
 
@@ -42,10 +44,11 @@ class GCT(nn.Module):
         
         # ST-GCN 
         self.st_gcn = GCN(self.D_1,512,self.D_2)
+        self.st_pool = nn.MaxPool1d(self.T)
         
         # Graph Learning : 3 or 1 input channel ?
-        self.g = nn.Conv2d(3,self.D_1,1)
-        self.h = nn.Conv2d(3,self.D_1,1)
+        self.g = nn.Conv1d(self.D_1,self.D_1,1)
+        self.h = nn.Conv1d(self.D_1,self.D_1,1)
         
         # CT-GCN
         self.ct_gcn = GCN(self.D_2,384,self.D_2)
@@ -77,18 +80,21 @@ class GCT(nn.Module):
         # ST-GCN
         A_1 = self.build_st_graph(self.T, self.M_z)
         V_1 = self.st_gcn(Z.permute(0,2,1), A_1).permute(0,2,1)
-                                     #time range T max pooling ?)
-        print("A_1",A_1.shape,"V_1",V_1.shape)
+        V_1 = self.st_pool(V_1.permute(2,1,0)).permute(2,1,0) #time range T max pooling
+        
+        print("A_1",A_1.shape,"\nV_1",V_1.shape)
         # Graph Learning 
         V_x = V_1 + X_hat
+        print("V_x",V_x.shape)
         A_2 = self.build_ct_graph(V_x)
         print("V_x",V_x.shape,"A_2",A_2.shape)
-        
         # CT-GCN
-        V_2 = self.ct_gcn(V_1, A_2)
-        
+        V_2 = self.ct_gcn(V_1.permute(0,2,1), A_2).permute(0,2,1)
+
+        print("V_2", V_2.shape)
         # XCorr
-        R = ...
+        a, b, c = X.shape[0], X.shape[1], int(sqrt(X.shape[2]))
+        R = F.conv2d(X.view((a,b,11,8)),V_2.reshape((a,b,11,8)))
         
         return R
 
@@ -112,11 +118,12 @@ class GCT(nn.Module):
         # make it sparse
         d = V_x.shape[-1]
         A = torch.zeros((d,d))#, layout=torch.sparse_coo)
-        print(V_x.shape)
-        print(self.g(V_x[:,0]).shape)
+        #print(V_x.shape)
+        #print(self.g(V_x[:,:,0][:,:,None]).shape)
         for i in range(self.M_z):
             for j in range(self.M_z):
-                A[j,i]=torch.exp(torch.mm(self.g(V_x[:,i]).T,self.h(V_x[:,j])))
+                print(torch.mm(self.g(V_x[:,:,i,None])[0,:,:].T,self.h(V_x[:,:,j,None])[0,:,:]))
+                A[j,i]=torch.exp(torch.mm(self.g(V_x[:,:,i,None])[0,:,:].T,self.h(V_x[:,:,j,None])[0,:,:]))
         #normalize
         A = A / A.sum(1)[:,None]
         return A
