@@ -1,3 +1,4 @@
+
 import numpy as np
 
 import torch 
@@ -122,9 +123,10 @@ class GCT(nn.Module):
         #print(self.g(V_x[:,:,0][:,:,None]).shape)
         for i in range(self.M_z):
             for j in range(self.M_z):
-                print(torch.mm(self.g(V_x[:,:,i,None])[0,:,:].T,self.h(V_x[:,:,j,None])[0,:,:]))
-                A[j,i]=torch.exp(torch.mm(self.g(V_x[:,:,i,None])[0,:,:].T,self.h(V_x[:,:,j,None])[0,:,:]))
+                A[j,i]=torch.mm(self.g(V_x[:,:,i,None])[0,:,:].T,self.h(V_x[:,:,j,None])[0,:,:])
         #normalize
+        A -= A.max(1)[0][:,None]
+        A = torch.exp(A)
         A = A / A.sum(1)[:,None]
         return A
     
@@ -141,3 +143,5 @@ class GCN(nn.Module):
         x = self.act1(self.conv1(x,adj))
         x = self.act2(self.conv2(x,adj))
         return x
+
+    
